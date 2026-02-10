@@ -12,22 +12,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Obtener código
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Configurar JDK 17 (Esto ya lo tienes)
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 🔥 NUEVO PASO: Dar permisos de ejecución a Gradle
+      # 🔥 CORRECCIÓN 1: Damos permisos al gradlew (Error 126)
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 3. Levantar OWASP ZAP (Docker)
+      # 🔥 CORRECCIÓN 2: Sintaxis Docker limpia y Timeout alto (Error 127 y 124)
       - name: Start OWASP ZAP Container
         timeout-minutes: 15
         run: |
@@ -35,7 +33,7 @@ jobs:
             -u zap \
             -p 8080:8080 \
             -i ghcr.io/zaproxy/zaproxy:stable \
-            /zap/zap.sh \
+            zap.sh \
             -daemon \
             -host 0.0.0.0 \
             -port 8080 \
@@ -46,7 +44,6 @@ jobs:
           echo "Esperando a que ZAP inicie..."
           sleep 30
 
-      # 4. Ejecutar Pruebas de Navegación (Serenity BDD)
       - name: Run Serenity Navigation Tests
         run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8080 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8080
         env:
@@ -54,13 +51,11 @@ jobs:
           ORBIT_PASS: ${{ secrets.ORBIT_PASS }}
         continue-on-error: true
 
-      # 5. Ejecutar el Escaneo de Seguridad (ZapSecurityRunner)
       - name: Run ZAP Security Attack
         run: ./gradlew runZapRunner
         env:
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
 
-      # 6. Guardar Reporte de Seguridad ZAP
       - name: Upload ZAP Security Report
         uses: actions/upload-artifact@v4
         if: always()

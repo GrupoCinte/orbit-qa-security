@@ -18,7 +18,6 @@ public class ZapSecurityRunner {
     // 🔒 SEGURIDAD (CORREGIDO):
     // Usamos .trim() para limpiar espacios invisibles o saltos de línea que causan el error "Illegal character".
     private static final String ZAP_API_KEY = System.getenv("ZAP_API_KEY") != null ? System.getenv("ZAP_API_KEY").trim() : null;
-
     // URL Objetivo
     private static final String BASE_URL = "http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/";
 
