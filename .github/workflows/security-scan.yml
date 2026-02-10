@@ -21,12 +21,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ✅ CORRECCIÓN DE PERMISOS (Evita error 126)
+      # PREVENCIÓN ERROR 126 (Permisos)
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ✅ CORRECCIÓN DE TIMEOUT Y DOCKER (Evita error 124 y 127)
-      # Le damos 60 minutos para descargar la imagen pesada de ZAP
+      # SOLUCIÓN ERROR 124 (TIMEOUT) y 127 (Sintaxis)
+      # Aumentamos el tiempo a 60 minutos explícitamente
       - name: Start OWASP ZAP Container
         timeout-minutes: 60
         run: |
@@ -45,7 +45,6 @@ jobs:
           echo "Esperando a que ZAP inicie..."
           sleep 40
 
-      # Paso de Serenity (Navegación)
       - name: Run Serenity Navigation Tests
         run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8080 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8080
         env:
@@ -53,7 +52,6 @@ jobs:
           ORBIT_PASS: ${{ secrets.ORBIT_PASS }}
         continue-on-error: true
 
-      # Paso de Ataque ZAP
       - name: Run ZAP Security Attack
         run: ./gradlew runZapRunner
         env:
