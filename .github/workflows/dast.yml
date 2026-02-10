@@ -1,0 +1,65 @@
+name: DAST JSF Pipeline
+on: [push]
+
+jobs:
+  security_scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Instalación limpia de Chrome
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@latest
+
+      # Iniciar ZAP (Usando el puerto definido en tu arquitectura)
+      - name: Start ZAP Container
+        run: |
+          docker run -d -p 8080:8080 --name zap ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -daemon -host 0.0.0.0 -port 8080 \
+            -config api.disablekey=true \
+            -config api.addrs.addr.name=.* \
+            -config api.addrs.addr.enabled=true
+
+          echo "Esperando a ZAP..."
+          timeout 420s bash -c 'until curl -s http://localhost:8080; do sleep 5; done'
+
+      # Ejecución de Serenity usando el Secret
+      - name: Build & Run Serenity Tests
+        run: |
+          mvn clean verify \
+          -Dwebdriver.proxy.http=${{ secrets.ZAP_ADDR }} \
+          -Dwebdriver.proxy.https=${{ secrets.ZAP_ADDR }} \
+          -Dheadless.mode=true \
+          -Dchrome.switches="--headless,--no-sandbox,--disable-dev-shm-usage"
+        env:
+          QA_URL: ${{ vars.QA_URL }}
+          QA_USER: ${{ secrets.QA_USER }}
+          QA_PASS: ${{ secrets.QA_PASS }}
+
+      # Ejecución del Scan de Python usando el Secret
+      - name: Run ZAP Active Scan
+        run: |
+          pip install requests
+          # Si ZAP_ADDR está vacío, usa localhost como respaldo
+          export ZAP_ADDR=${{ secrets.ZAP_ADDR }}
+          python scripts/zap_control.py
+        env:
+          QA_URL: ${{ vars.QA_URL }}
+          # Inyectamos el secret explícitamente aquí también
+          ZAP_ADDR: ${{ secrets.ZAP_ADDR }}
+
+      - name: Upload Security Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            zap-report.html
+            target/site/serenity/
