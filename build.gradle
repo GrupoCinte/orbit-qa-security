@@ -1,0 +1,79 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        // Plugin de Serenity
+        classpath("net.serenity-bdd:serenity-gradle-plugin:4.0.30")
+    }
+}
+
+// 1. APLICAMOS LOS PLUGINS EXPLÍCITAMENTE (Orden Importante)
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'net.serenity-bdd.serenity-gradle-plugin'
+
+// 2. CONFIGURACIÓN DEL PROYECTO
+defaultTasks 'clean', 'test', 'aggregate'
+
+repositories {
+    mavenCentral()
+}
+
+// 3. VERSIÓN DE JAVA (Usamos la sintaxis moderna 'java {}')
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+ext {
+    serenityCoreVersion = '4.0.30'
+    junitVersion = '5.10.1'
+}
+
+dependencies {
+    // Serenity Core y Cucumber
+    testImplementation "net.serenity-bdd:serenity-core:${serenityCoreVersion}"
+    testImplementation "net.serenity-bdd:serenity-cucumber:${serenityCoreVersion}"
+    testImplementation "net.serenity-bdd:serenity-screenplay:${serenityCoreVersion}"
+    testImplementation "net.serenity-bdd:serenity-junit5:${serenityCoreVersion}"
+
+    // JUnit 5
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+
+    // --- CORRECCIÓN PARA EL ERROR ---
+    testImplementation "junit:junit:4.13.2"                  // <--- AGREGAR ESTA (Permite usar @RunWith)
+    testRuntimeOnly "org.junit.vintage:junit-vintage-engine:${junitVersion}" // <--- AGREGAR ESTA (Permite correrlo)
+
+    // Logging
+    testImplementation "ch.qos.logback:logback-classic:1.4.14"
+
+    // Cliente OWASP ZAP
+    implementation 'org.zaproxy:zap-clientapi:1.14.0'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging.showStandardStreams = true
+}
+
+gradle.startParameter.continueOnFailure = true
+
+// --- TAREA DE SEGURIDAD ZAP ---
+task runZapRunner(type: JavaExec) {
+    group = "security"
+    description = "Ejecuta el ataque de seguridad OWASP ZAP"
+
+    // Configura el classpath para encontrar tus clases compiladas
+    classpath = sourceSets.test.runtimeClasspath
+
+    // Define la clase principal
+    mainClass = "utils.ZapSecurityRunner"
+
+    // Pasa la variable de entorno de GitHub al proceso Java
+    if (System.getenv("ZAP_API_KEY") != null) {
+        environment "ZAP_API_KEY", System.getenv("ZAP_API_KEY")
+    }
+}
