@@ -54,3 +54,15 @@ serenity.properties
 
 # Ignorar logs de ejecución
 *.log
+
+.gradle
+build/
+target/
+zap-reports/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+.idea/
+*.iml
+.DS_Store
+serenity.properties
+*.log

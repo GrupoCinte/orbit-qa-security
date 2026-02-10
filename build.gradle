@@ -66,13 +66,10 @@ task runZapRunner(type: JavaExec) {
     group = "security"
     description = "Ejecuta el ataque de seguridad OWASP ZAP"
 
-    // Configura el classpath para encontrar tus clases compiladas
     classpath = sourceSets.test.runtimeClasspath
-
-    // Define la clase principal
     mainClass = "utils.ZapSecurityRunner"
 
-    // Pasa la variable de entorno de GitHub al proceso Java
+    // Pasar la API KEY al proceso de Java si existe en el entorno
     if (System.getenv("ZAP_API_KEY") != null) {
         environment "ZAP_API_KEY", System.getenv("ZAP_API_KEY")
     }
