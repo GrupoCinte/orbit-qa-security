@@ -25,11 +25,13 @@ jobs:
 
       # 3. Levantar OWASP ZAP (Docker)
       - name: Start OWASP ZAP Container
+        timeout-minutes: 15              # <--- 1. AGREGAMOS ESTA LÍNEA (Más tiempo)
         run: |
           docker run -d --name zap \
             -u zap \
             -p 8080:8080 \
-            -i zaproxy/zap-stable zap.sh \
+            -i ghcr.io/zaproxy/zaproxy:stable \   # <--- 2. USAMOS ESTA IMAGEN (Más rápida)
+            zap.sh \
             -daemon \
             -host 0.0.0.0 \
             -port 8080 \
@@ -38,7 +40,7 @@ jobs:
             -config api.key=${{ secrets.ZAP_API_KEY }} 
           
           echo "Esperando a que ZAP inicie..."
-          sleep 20
+          sleep 30  # Aumentamos un poco la espera local también
 
       # 4. Ejecutar Pruebas de Navegación (Serenity BDD)
       - name: Run Serenity Navigation Tests
