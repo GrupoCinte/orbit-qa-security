@@ -1,163 +1,123 @@
+# 🛡️ Orbit QA Security - DAST Automation Project
+
+Este proyecto es una **implementación de referencia DevSecOps** para la ejecución de **Pruebas de Seguridad Dinámicas (DAST)** automatizadas sobre la aplicación **Orbit**.
+
+El sistema integra **Serenity BDD** para la navegación funcional y **OWASP ZAP** para el escaneo de seguridad, orquestado completamente mediante un pipeline de **CI/CD en GitHub Actions**.
 
 ---
 
-# JSF DAST Security Reference Project
+## 🏗️ Arquitectura de la Solución
 
-Este proyecto es una **implementación de referencia** para **Pruebas de Seguridad Dinámicas (DAST)** automatizadas sobre aplicaciones **JSF**, integradas directamente en un pipeline **CI/CD con GitHub Actions**.
+El flujo de trabajo se ejecuta de manera desatendida y consta de tres fases críticas:
 
-El objetivo es demostrar cómo aplicar un enfoque **DevSecOps**, donde las pruebas de seguridad forman parte natural del ciclo de vida del desarrollo, sin intervención manual y sin hardcoding de información sensible.
+### 1. Navegación Funcional (Traffic Generation)
+Se utilizan **Serenity BDD + Cucumber** para simular un usuario real navegando por la aplicación.
+* **Objetivo:** Generar tráfico HTTP válido y autenticado.
+* **Proxy:** Todo el tráfico de las pruebas funcionales pasa a través del puerto `8080`, donde **OWASP ZAP** está escuchando como un proxy pasivo.
+* **Credenciales:** Se inyectan de forma segura (sin hardcoding) mediante variables de entorno y GitHub Secrets.
 
----
+### 2. Análisis de Seguridad (DAST Attack)
+Una vez capturado el tráfico, se ejecuta la utilidad personalizada `ZapSecurityRunner` (Java):
+* **Spider:** Rastrea la aplicación para descubrir nuevas URLs ocultas.
+* **Active Scan:** Lanza ataques controlados contra los endpoints descubiertos.
+* **Sanitización:** El runner limpia automáticamente la API Key (`.trim()`) para evitar errores de formato en el entorno CI.
 
-##  Arquitectura del Proyecto
-
-El flujo de trabajo se ejecuta **100% en GitHub Actions** y consta de **tres fases principales**:
-
-###  Navegación Autenticada
-
-Se utilizan **Serenity BDD + Selenium + Cucumber** para ejecutar pruebas funcionales reales, incluyendo un **login autenticado** en la aplicación JSF.
-
-Esto permite:
-
-* Acceder a áreas protegidas
-* Generar tráfico real y representativo
-* Mapear correctamente la superficie de ataque
+### 3. Reporte y Artefactos
+Al finalizar, se generan reportes técnicos que detallan las vulnerabilidades encontradas (XSS, SQLi, Headers, etc.) clasificadas por severidad.
 
 ---
 
-### Análisis de Seguridad (DAST)
+## 🛠️ Tecnologías Utilizadas
 
-Un contenedor **OWASP ZAP** se ejecuta en modo *daemon* y actúa como **proxy de seguridad**:
+* **Lenguaje & Build:**
+  * ☕ Java 17 (OpenJDK Temurin)
+  * 🐘 Gradle 8.x (Gestión de dependencias y tareas)
 
-* Intercepta todo el tráfico generado por Serenity
-* Ejecuta **Spider** para descubrir URLs y parámetros
-* Lanza un **Active Scan** con ataques controlados
+* **Framework de Pruebas:**
+  * Serenity BDD
+  * Cucumber (Gherkin)
+  * Selenium WebDriver
 
-ZAP analiza vulnerabilidades como:
+* **Seguridad DAST:**
+  * ⚡ OWASP ZAP (Imagen Docker: `ghcr.io/zaproxy/zaproxy:stable`)
+  * ZAP Client API (Java)
 
-* XSS
-* SQL Injection
-* CSRF
-* Security Headers
-* Path Traversal
-* Misconfigurations
-
----
-
-###  Reporte de Evidencias
-
-Al finalizar el pipeline se generan y publican:
-
-* **Reporte técnico de seguridad (ZAP)**
-* **Reporte funcional Serenity** con pasos y screenshots
-
-Ambos quedan disponibles como **Artifacts** del pipeline.
+* **Infraestructura CI/CD:**
+  * 🐳 Docker
+  * GitHub Actions (Ubuntu Latest)
 
 ---
 
-##  Tecnologías Utilizadas
+## 🔐 Configuración de Secretos (GitHub)
 
-* **Lenguaje**:
+Para que el pipeline funcione, es **obligatorio** configurar los siguientes secretos en el repositorio:
 
-    * Java 17 (tests funcionales)
-    * Python 3 (control de ZAP vía API)
+**Ruta:** `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
 
-* **Framework de Pruebas**:
+| Nombre Secreto | Descripción | Ejemplo / Notas |
+| :--- | :--- | :--- |
+| `ZAP_API_KEY` | Clave de API para controlar ZAP | `qcfou2f1e3uolruhfinhja6cld` |
+| `ORBIT_USER` | Usuario válido para login en Orbit | `admin` |
+| `ORBIT_PASS` | Contraseña del usuario | `Password123!` |
 
-    * Serenity BDD
-    * Cucumber
-    * Selenium WebDriver
-
-* **Herramienta de Seguridad**:
-
-    * OWASP ZAP (Zaproxy)
-
-* **Infraestructura**:
-
-    * Docker
-    * GitHub Actions
+> **Nota de Seguridad:** El código fuente `ZapSecurityRunner.java` utiliza `.trim()` automáticamente en la API Key para prevenir errores por espacios invisibles al copiar los secretos.
 
 ---
 
+## 🚀 Ejecución del Pipeline
 
-##  Variables Requeridas en GitHub
+El archivo de flujo de trabajo se encuentra en `.github/workflows/security-scan.yml`.
 
-Antes de ejecutar el pipeline, configura los siguientes valores en:
+### Disparadores (Triggers)
+El pipeline se activa automáticamente en los siguientes eventos:
+1.  **Push** a las ramas `develop` o `main`.
+2.  **Pull Request** hacia `develop` o `main`.
+3.  **Ejecución manual** (Workflow Dispatch).
 
-**Settings → Secrets and variables → Actions**
-
-### Variables
-
-| Nombre   | Tipo     | Descripción                            |
-| -------- | -------- | -------------------------------------- |
-| `QA_URL` | Variable | URL base de la aplicación JSF a probar |
-
-### Secrets
-
-| Nombre     | Tipo   | Descripción                                              |
-| ---------- | ------ | -------------------------------------------------------- |
-| `ZAP_ADDR` | Secret | Dirección del servidor ZAP (ej: `http://localhost:8080`) |
-| `QA_USER`  | Secret | Usuario para el login                                    |
-| `QA_PASS`  | Secret | Contraseña para el login                                 |
+### Pasos del Workflow
+1.  **Checkout & Setup:** Descarga el código y configura Java 17.
+2.  **Permisos:** Otorga permisos de ejecución (`chmod +x`) al wrapper de Gradle para evitar errores (Exit 126).
+3.  **Docker ZAP:** Descarga e inicia el contenedor de ZAP en modo daemon (Puerto 8080).
+  * *Timeout extendido a 60 min para prevenir fallos de red (Exit 124).*
+4.  **Tests Serenity:** Ejecuta la navegación funcional inyectando los secretos de login.
+5.  **Ataque ZAP:** Ejecuta `runZapRunner` para iniciar el escaneo activo.
+6.  **Publicación:** Sube el reporte HTML como un artefacto descargable.
 
 ---
 
-##  Ejecución del Pipeline
+## 📊 Reportes Generados
 
-El pipeline se activa **automáticamente con cada `push`** y realiza los siguientes pasos:
+Al finalizar una ejecución exitosa en GitHub Actions, encontrarás el siguiente artefacto en la sección **Summary**:
 
-1. Levanta un contenedor **OWASP ZAP** en modo daemon
-2. Ejecuta pruebas de **Serenity**, redirigiendo el tráfico a través del proxy de ZAP
-3. Ejecuta **Spider + Active Scan** mediante un script en Python
-4. Publica los artefactos de seguridad y pruebas funcionales
-
----
-
-##  Reportes Generados
-
-### Serenity Report
-
-* Flujo funcional completo
-* Pasos ejecutados
-* Evidencia visual (screenshots)
-* Estado de cada escenario
-
-📂 `target/site/serenity/index.html`
+### 📄 `zap-security-report`
+Archivo HTML (`Reporte_Orbit_YYYYMMDD.html`) que contiene:
+* Resumen de alertas por nivel de riesgo (Alto, Medio, Bajo, Informativo).
+* Descripción detallada de cada vulnerabilidad.
+* Evidencia de la petición y respuesta HTTP.
+* Recomendaciones de solución.
 
 ---
 
-###  ZAP Security Report
+## 💻 Ejecución Local (Para Desarrolladores)
 
-* Vulnerabilidades detectadas
-* Clasificación por riesgo:
+Si deseas correr las pruebas en tu máquina antes de subir cambios:
 
-    * Alto
-    * Medio
-    * Bajo
-* Evidencia técnica
+1.  **Levantar ZAP (Docker):**
+    ```bash
+    docker run -u zap -p 8080:8080 -i ghcr.io/zaproxy/zaproxy:stable /zap/zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.key=TU_API_KEY
+    ```
 
-📄 `zap-report.html`
+2.  **Configurar Variables de Entorno (IntelliJ / Terminal):**
+  * `ZAP_API_KEY=TU_API_KEY`
+  * `ORBIT_USER=tu_usuario`
+  * `ORBIT_PASS=tu_pass`
 
----
-
-## 🧑‍💻 ¿Cómo usar este proyecto?
-
-1. Haz un **fork** del repositorio
-2.  Configura los **Secrets y Variables** en GitHub
-3. Realiza cualquier cambio en el código
-4.  Haz `push`
-5. Observa la ejecución en la pestaña **Actions**
-6. Descarga los **Artifacts** con los reportes
+3.  **Ejecutar:**
+    ```bash
+    # Ejecutar navegación y luego escaneo
+    ./gradlew test
+    ./gradlew runZapRunner
+    ```
 
 ---
-
-## Objetivo del Proyecto
-
-Este repositorio sirve como:
-
-* Referencia técnica de **DAST automatizado**
-* Base para pipelines **DevSecOps**
-
-* Punto de partida para integrar seguridad en CI/CD
-
----
+**Maintained by:** QA Automation Team - Grupo Cinte
