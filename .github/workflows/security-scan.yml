@@ -16,12 +16,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Configurar JDK 17
+      # 2. Configurar JDK 17 (Esto ya lo tienes)
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      # 🔥 NUEVO PASO: Dar permisos de ejecución a Gradle
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
       # 3. Levantar OWASP ZAP (Docker)
       - name: Start OWASP ZAP Container
