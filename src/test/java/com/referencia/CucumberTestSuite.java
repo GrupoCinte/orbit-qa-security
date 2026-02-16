@@ -4,10 +4,10 @@ import io.cucumber.junit.CucumberOptions;
 import net.serenitybdd.cucumber.CucumberWithSerenity;
 import org.junit.runner.RunWith;
 
-@RunWith(CucumberWithSerenity.class) // Esto requiere JUnit 4
+@RunWith(CucumberWithSerenity.class)
 @CucumberOptions(
         features = "src/test/resources/features",
-        glue = "com.referencia", // <--- CAMBIO: Apunta directo al paquete steps
+        glue = "com.referencia",
         plugin = {"pretty", "json:target/cucumber.json"},
         tags = ""
 )

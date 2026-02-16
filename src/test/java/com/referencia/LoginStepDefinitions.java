@@ -12,7 +12,6 @@ public class LoginStepDefinitions extends UIInteractionSteps {
     public void que_el_usuario_se_encuentra_autenticado_en_el_sistema() {
         openUrl(System.getenv("QA_URL"));
 
-        // 1. Manejo del aviso de Chrome (ya incluido anteriormente)
         try {
             if ($(By.xpath("//button[contains(text(),'Continuar al sitio')]")).isPresent()) {
                 $(By.xpath("//button[contains(text(),'Continuar al sitio')]")).click();
@@ -25,14 +24,12 @@ public class LoginStepDefinitions extends UIInteractionSteps {
         $(By.id("j_idt5:password")).type(System.getenv("QA_PASS"));
         $(By.id("j_idt5:button")).click();
 
-        waitABit(2000); // Esperar a que la app responda
+        waitABit(2000);
 
-        // Caso A: Si aparece el mensaje de error en pantalla
         if ($(By.xpath("//*[contains(text(),'usuario está inactivo')]")).isPresent() ||
                 $(By.xpath("//*[contains(text(),'no está registrado')]")).isPresent()) {
 
             System.out.println("ERROR DE AUTENTICACIÓN: El usuario está inactivo o no registrado.");
-            // Opcional: Tomar captura de pantalla del error
             return;
         }
 

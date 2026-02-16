@@ -15,27 +15,21 @@ public class ZapSecurityRunner {
     private static final String ZAP_ADDRESS = "localhost";
     private static final int ZAP_PORT = 8080;
 
-    // 🔒 SEGURIDAD (CORREGIDO):
-    // Usamos .trim() para limpiar espacios invisibles o saltos de línea que causan el error "Illegal character".
     private static final String ZAP_API_KEY = System.getenv("ZAP_API_KEY") != null ? System.getenv("ZAP_API_KEY").trim() : null;
-    // URL Objetivo
     private static final String BASE_URL = "http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/";
 
     public static void main(String[] args) {
-        // 1. VALIDACIÓN DE SEGURIDAD
         if (ZAP_API_KEY == null || ZAP_API_KEY.isEmpty()) {
             throw new RuntimeException("⛔ ERROR CRÍTICO: No se encontró la variable de entorno 'ZAP_API_KEY'. Configure el secreto en GitHub o en su IDE.");
         }
 
         System.out.println("--- 🛡️ PROTOCOLO DE SEGURIDAD ZAP INICIADO ---");
-        // Imprimimos los últimos 4 caracteres para verificar (sin mostrar la clave completa)
         String maskedKey = "..." + (ZAP_API_KEY.length() > 4 ? ZAP_API_KEY.substring(ZAP_API_KEY.length() - 4) : "****");
         System.out.println("API Key cargada (Cleaned): " + maskedKey);
 
         ClientApi api = new ClientApi(ZAP_ADDRESS, ZAP_PORT, ZAP_API_KEY);
 
         try {
-            // EXCLUSIONES (Logout para no perder sesión)
             String[] urlsProhibidas = {
                     ".*logout.*",
                     ".*salir.*",
@@ -50,7 +44,6 @@ public class ZapSecurityRunner {
                     api.ascan.excludeFromScan(patron);
                     System.out.println(">> URL Blindada (Excluida): " + patron);
                 } catch (Exception e) {
-                    // Ignorar si ya existe
                 }
             }
 
@@ -72,7 +65,6 @@ public class ZapSecurityRunner {
             System.out.println(">>> [3/3] Generando Reporte...");
             byte[] report = api.core.htmlreport();
 
-            // Crear carpeta si no existe
             Files.createDirectories(Paths.get("target/zap-reports"));
 
             String fecha = new SimpleDateFormat("yyyyMMdd_HHmm").format(new Date());
@@ -84,7 +76,7 @@ public class ZapSecurityRunner {
         } catch (Exception e) {
             System.err.println("❌ ERROR DURANTE EL ESCANEO: " + e.getMessage());
             e.printStackTrace();
-            System.exit(1); // Forzar error en el pipeline si falla
+            System.exit(1);
         }
     }
 
