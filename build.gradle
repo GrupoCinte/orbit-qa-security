@@ -68,8 +68,9 @@ dependencies {
 test {
     useJUnitPlatform()
     testLogging.showStandardStreams = true
-
-    // Pasa todas las propiedades del sistema al test (Importante para drivers y entornos)
+    filter {
+        includeTestsMatching "starter.CucumberTestSuite"
+    }
     systemProperties System.getProperties()
 }
 

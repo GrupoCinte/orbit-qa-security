@@ -45,8 +45,9 @@ public class OrbitStepDefinitions extends PageObject {
     public void ingresarCredenciales() {
         LOGGER.info(">>> [2/4] Ingresando credenciales...");
 
-        String usuario = "gc__@grupocinte.com";
-        String pass = "Estreno32.";
+        // Prioriza variables de entorno (GitHub), si no existen, usa tus datos locales
+        String usuario = System.getenv("ORBIT_USER") != null ? System.getenv("ORBIT_USER") : "gc__@grupocinte.com";
+        String pass = System.getenv("ORBIT_PASS") != null ? System.getenv("ORBIT_PASS") : "Estreno32.";
 
         $(INPUT_USUARIO).waitUntilVisible().clear();
         $(INPUT_USUARIO).type(usuario);
