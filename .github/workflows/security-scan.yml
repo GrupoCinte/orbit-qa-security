@@ -1,0 +1,65 @@
+name: Orbit Security Pipeline
+
+on:
+  push:
+    branches: [ "develop", "main" ]
+  pull_request:
+    branches: [ "develop", "main" ]
+  workflow_dispatch:
+
+jobs:
+  security-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # PREVENCIÓN ERROR 126 (Permisos)
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # SOLUCIÓN ERROR 124 (TIMEOUT) y 127 (Sintaxis)
+      # Aumentamos el tiempo a 60 minutos explícitamente
+      - name: Start OWASP ZAP Container
+        timeout-minutes: 60
+        run: |
+          docker run -d --name zap \
+            -u zap \
+            -p 8080:8080 \
+            -i ghcr.io/zaproxy/zaproxy:stable \
+            /zap/zap.sh \
+            -daemon \
+            -host 0.0.0.0 \
+            -port 8080 \
+            -config api.addrs.addr.name=.* \
+            -config api.addrs.addr.regex=true \
+            -config api.key=${{ secrets.ZAP_API_KEY }}
+          
+          echo "Esperando a que ZAP inicie..."
+          sleep 40
+
+      - name: Run Serenity Navigation Tests
+        run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8080 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8080
+        env:
+          ORBIT_USER: ${{ secrets.ORBIT_USER }}
+          ORBIT_PASS: ${{ secrets.ORBIT_PASS }}
+        continue-on-error: true
+
+      - name: Run ZAP Security Attack
+        run: ./gradlew runZapRunner
+        env:
+          ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
+
+      - name: Upload ZAP Security Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-security-report
+          path: target/zap-reports/
