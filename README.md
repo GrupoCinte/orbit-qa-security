@@ -1,123 +1,130 @@
-# 🛡️ Orbit QA Security - DAST Automation Project
+# 🛡️ Pruebas de Seguridad DAST - Orbit QA Security Framework
 
-Este proyecto es una **implementación de referencia DevSecOps** para la ejecución de **Pruebas de Seguridad Dinámicas (DAST)** automatizadas sobre la aplicación **Orbit**.
+Framework de automatización de pruebas de seguridad dinámica (DAST) para el aplicativo **Orbit**.
+Esta solución implementa un enfoque híbrido: utiliza **Serenity BDD** para la navegación y descubrimiento de rutas (Crawling), y **OWASP ZAP** para el análisis y ataque de vulnerabilidades.
 
-El sistema integra **Serenity BDD** para la navegación funcional y **OWASP ZAP** para el escaneo de seguridad, orquestado completamente mediante un pipeline de **CI/CD en GitHub Actions**.
+Diseñado para integrarse en pipelines de CI/CD, permitiendo escaneos de seguridad continuos sin intervención manual.
+## Tech Stack
 
----
+* **Lenguaje:** Java 17 (OpenJDK)
+* **Build Tool:** Gradle 9.0
+* **Crawler:** Serenity BDD 4.x + Cucumber (Gherkin)
+* **Security Core:** OWASP ZAP Client API
+* **Browser Driver:** Selenium WebDriver (Chrome Headless)
+* **CI/CD:** GitHub Actions
 
-## 🏗️ Arquitectura de la Solución
+## Estructura del Proyecto
 
-El flujo de trabajo se ejecuta de manera desatendida y consta de tres fases críticas:
+```text
+orbit-qa-security/
+├── .github/
+│   └── workflows/
+│       └── security-scan.yml      # Pipeline de Seguridad (Navegación + Ataque)
+├── src/test/
+│   ├── java/
+│   │   ├── starter/
+│   │   │   ├── CucumberTestSuite.java   # Ejecutor de los tests de navegación
+│   │   │   └── OrbitStepDefinitions.java # Lógica de Login y recorrido de módulos
+│   │   └── utils/
+│   │       └── ZapSecurityRunner.java   # ⚡ MOTOR HÍBRIDO: Conecta con ZAP y lanza el ataque
+│   └── resources/
+│       ├── features/
+│       │   └── login.feature      # Escenario Gherkin para "enseñar" rutas a ZAP
+│       ├── serenity.conf          # Configuración del navegador (Headless/Proxy)
+│       └── cucumber.properties    # Configuración de glue y reportes
+├── build.gradle                   # Dependencias y tareas personalizadas (runZapRunner)
+└── README.md                      # Documentación del proyecto
+```
+##  Requisitos Previos
+* **Java JDK 17** instalado y configurado en el PATH.
 
-### 1. Navegación Funcional (Traffic Generation)
-Se utilizan **Serenity BDD + Cucumber** para simular un usuario real navegando por la aplicación.
-* **Objetivo:** Generar tráfico HTTP válido y autenticado.
-* **Proxy:** Todo el tráfico de las pruebas funcionales pasa a través del puerto `8080`, donde **OWASP ZAP** está escuchando como un proxy pasivo.
-* **Credenciales:** Se inyectan de forma segura (sin hardcoding) mediante variables de entorno y GitHub Secrets.
+* **OWASP ZAP Desktop** instalado (para ejecución local).
 
-### 2. Análisis de Seguridad (DAST Attack)
-Una vez capturado el tráfico, se ejecuta la utilidad personalizada `ZapSecurityRunner` (Java):
-* **Spider:** Rastrea la aplicación para descubrir nuevas URLs ocultas.
-* **Active Scan:** Lanza ataques controlados contra los endpoints descubiertos.
-* **Sanitización:** El runner limpia automáticamente la API Key (`.trim()`) para evitar errores de formato en el entorno CI.
+* **Google Chrome** instalado (para ejecución local).
 
-### 3. Reporte y Artefactos
-Al finalizar, se generan reportes técnicos que detallan las vulnerabilidades encontradas (XSS, SQLi, Headers, etc.) clasificadas por severidad.
+* Acceso a la red/VPN donde reside el ambiente de QA de Orbit.
 
----
-
-## 🛠️ Tecnologías Utilizadas
-
-* **Lenguaje & Build:**
-  * ☕ Java 17 (OpenJDK Temurin)
-  * 🐘 Gradle 8.x (Gestión de dependencias y tareas)
-
-* **Framework de Pruebas:**
-  * Serenity BDD
-  * Cucumber (Gherkin)
-  * Selenium WebDriver
-
-* **Seguridad DAST:**
-  * ⚡ OWASP ZAP (Imagen Docker: `ghcr.io/zaproxy/zaproxy:stable`)
-  * ZAP Client API (Java)
-
-* **Infraestructura CI/CD:**
-  * 🐳 Docker
-  * GitHub Actions (Ubuntu Latest)
-
----
-
-## 🔐 Configuración de Secretos (GitHub)
-
-Para que el pipeline funcione, es **obligatorio** configurar los siguientes secretos en el repositorio:
-
-**Ruta:** `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
-
-| Nombre Secreto | Descripción | Ejemplo / Notas |
-| :--- | :--- | :--- |
-| `ZAP_API_KEY` | Clave de API para controlar ZAP | `qcfou2f1e3uolruhfinhja6cld` |
-| `ORBIT_USER` | Usuario válido para login en Orbit | `admin` |
-| `ORBIT_PASS` | Contraseña del usuario | `Password123!` |
-
-> **Nota de Seguridad:** El código fuente `ZapSecurityRunner.java` utiliza `.trim()` automáticamente en la API Key para prevenir errores por espacios invisibles al copiar los secretos.
-
----
-
-## 🚀 Ejecución del Pipeline
-
-El archivo de flujo de trabajo se encuentra en `.github/workflows/security-scan.yml`.
-
-### Disparadores (Triggers)
-El pipeline se activa automáticamente en los siguientes eventos:
-1.  **Push** a las ramas `develop` o `main`.
-2.  **Pull Request** hacia `develop` o `main`.
-3.  **Ejecución manual** (Workflow Dispatch).
-
-### Pasos del Workflow
-1.  **Checkout & Setup:** Descarga el código y configura Java 17.
-2.  **Permisos:** Otorga permisos de ejecución (`chmod +x`) al wrapper de Gradle para evitar errores (Exit 126).
-3.  **Docker ZAP:** Descarga e inicia el contenedor de ZAP en modo daemon (Puerto 8080).
-  * *Timeout extendido a 60 min para prevenir fallos de red (Exit 124).*
-4.  **Tests Serenity:** Ejecuta la navegación funcional inyectando los secretos de login.
-5.  **Ataque ZAP:** Ejecuta `runZapRunner` para iniciar el escaneo activo.
-6.  **Publicación:** Sube el reporte HTML como un artefacto descargable.
-
----
-
-## 📊 Reportes Generados
-
-Al finalizar una ejecución exitosa en GitHub Actions, encontrarás el siguiente artefacto en la sección **Summary**:
-
-### 📄 `zap-security-report`
-Archivo HTML (`Reporte_Orbit_YYYYMMDD.html`) que contiene:
-* Resumen de alertas por nivel de riesgo (Alto, Medio, Bajo, Informativo).
-* Descripción detallada de cada vulnerabilidad.
-* Evidencia de la petición y respuesta HTTP.
-* Recomendaciones de solución.
-
----
-
-## 💻 Ejecución Local (Para Desarrolladores)
-
-Si deseas correr las pruebas en tu máquina antes de subir cambios:
-
-1.  **Levantar ZAP (Docker):**
-    ```bash
-    docker run -u zap -p 8080:8080 -i ghcr.io/zaproxy/zaproxy:stable /zap/zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.key=TU_API_KEY
+## Instalación
+1. Clona este repositorio:
+   ```bash
+   git clone <repository-url>
+   cd orbit-qa-security
     ```
+2. Descarga las dependencias del proyecto usando Gradle:
+   ```bash
+   ./gradlew clean build -x test 
+   ```
+## Ejecución de Pruebas
+El proceso consta de dos fases: Navegación (para capturar tráfico) y Ataque (para buscar fallos).
+### 1. Ejecución Local(paralela)
+- **Paso 1: Iniciar ZAP y Navegación**
+  Abre OWASP ZAP en tu PC (Puerto 8080) y ejecuta la navegación automatizada:
+```bash
+./gradlew clean test
+```
+Esto abrirá Chrome, navegará por Orbit y todo el tráfico quedará registrado en ZAP.
+- **Paso 2: Lanzar el Ataque de Seguridad**
+  Una vez terminada la navegación, ejecuta el Runner de seguridad:
+```bash
+./gradlew runZapRunner
+```
+Esto iniciará el Spider y el Active Scan sobre las URLs capturadas.
+## Configuración de Seguridad (Híbrida)
+El proyecto utiliza una Lógica Híbrida de Autenticación en **ZapSecurityRunner.java**:
+- **Local:** Detecta si no hay API Key y permite la conexión (útil para pruebas rápidas en tu PC).
+- **CI/CD:** Extrae automáticamente la **ZAP_API_KEY** de los Secrets de GitHub Actions.
 
-2.  **Configurar Variables de Entorno (IntelliJ / Terminal):**
-  * `ZAP_API_KEY=TU_API_KEY`
-  * `ORBIT_USER=tu_usuario`
-  * `ORBIT_PASS=tu_pass`
+Para que el Pipeline funcione correctamente, asegúrate de configurar los siguientes Secrets en tu repositorio de GitHub:
+- `ORBIT_USER : Usuario de prueba`
+- `ORBIT_PASS : Contraseña de prueba`
+- `ZAP_API_KEY : (Opcional) API Key de ZAP si el servidor lo requiere.`
 
-3.  **Ejecutar:**
-    ```bash
-    # Ejecutar navegación y luego escaneo
-    ./gradlew test
-    ./gradlew runZapRunner
-    ```
+## Reportes de Pruebas (Allure)
+### En Github Actions
+1. Al finalizar el pipeline, el reporte se publica automáticamente en **GitHub Pages**.
+2. Puedes consultarlo en la URL del repositorio (Settings -> Pages).
 
----
-**Maintained by:** QA Automation Team - Grupo Cinte
+### Localmente
+El reporte HTML se genera automáticamente al finalizar el runZapRunner:
+* **Ruta:** target/zap-reports/
+* **Archivo:** Reporte_Orbit_YYYYMMDD_HHMM.html
+## Características Avanzadas
+1. **Runner de Seguridad Inteligente:**
+- Código robusto que valida la conexión con ZAP ( `api.core.version()`) antes de iniciar.
+
+   
+- Manejo de excepciones para no romper el pipeline si ZAP no responde inmediatamente.
+
+2. **Protección de Sesión (Exclusiones Regex):**
+- El escáner está configurado para ignorar automáticamente URLs de cierre de sesión:
+- * `.*logout.*`, `.*salir.*`, `.*signout.*`
+
+
+- Si una prueba falla por intermitencia, se reintenta hasta 2 veces antes de marcarse como error.
+
+3. **Navegación Headless (CI Ready):**
+- Configuración optimizada en `serenity.conf` (`--headless=new`) para ejecutarse en servidores Linux sin interfaz gráfica.
+
+## Troubleshooting
+### ERROR: "Connection Refused" / "Exit Value 1"
+- **Causa probable:** ZAP Desktop no está abierto o no escucha en el puerto 8080.
+
+
+- **Solución:** Abre ZAP y verifica en Tools > Options > Local Proxies que esté en `localhost:8080`.
+
+### ERROR: "SessionNotCreatedException"
+- **Causa probable:** La versión de Chrome y ChromeDriver no coinciden, o falta el modo headless en servidor.
+- **Solución:** Asegúrate de tener `autodownload = true` en `serenity.conf` y `--headless=new` activado para CI.
+
+### ERROR: "Cannot find symbol variable system"
+- **Causa probable:** Versión antigua de la librería `zap-clientapi`.
+- **Solución:** El código ya implementa el fix usando `api.core.version()` en lugar de `api.system`.
+
+
+##  Archivos Clave
+| Archivo                     | Propósito |
+|-----------------------------|-----------|
+| `ZapSecurityRunner.java`    | Inicia el Spider y el Active Scan una vez que Serenity termina de navegar. |
+| `serenity.conf`     | Configura Chrome para interceptar el tráfico. |
+| `login.feature`          | Contiene los pasos Gherkin (Dado/Cuando/Entonces) para loguearse y visitar los módulos. |
+| `security-scan.yml`     | Orquestador de GitHub Actions. |
