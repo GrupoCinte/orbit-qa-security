@@ -7,10 +7,14 @@ on:
     branches: [ "develop", "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   security-test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -21,12 +25,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # PREVENCIÓN ERROR 126 (Permisos)
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # SOLUCIÓN ERROR 124 (TIMEOUT) y 127 (Sintaxis)
-      # Aumentamos el tiempo a 60 minutos explícitamente
       - name: Start OWASP ZAP Container
         timeout-minutes: 60
         run: |
@@ -45,7 +46,7 @@ jobs:
           echo "Esperando a que ZAP inicie..."
           sleep 40
 
-      - name: Run Serenity Navigation Tests
+      - name: Run Serenity Navigation (Crawler)
         run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8080 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8080
         env:
           ORBIT_USER: ${{ secrets.ORBIT_USER }}
@@ -57,9 +58,39 @@ jobs:
         env:
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
 
-      - name: Upload ZAP Security Report
-        uses: actions/upload-artifact@v4
+      # --- LÓGICA PARA PUBLICAR EL REPORTE DE ZAP ---
+      - name: Prepare ZAP Report for Publishing
         if: always()
+        run: |
+          mkdir -p public_report
+          # Buscamos el reporte HTML más reciente en la raíz o en target/zap-reports
+          # y lo copiamos como index.html para GitHub Pages
+          latest_report=$(ls -t *.html target/zap-reports/*.html 2>/dev/null | head -n 1)
+          if [ -n "$latest_report" ]; then
+            cp "$latest_report" public_report/index.html
+            echo "Reporte seleccionado: $latest_report"
+          else
+            echo "<html><body><h1>No se encontró el reporte de seguridad</h1></body></html>" > public_report/index.html
+          fi
+
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact for Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: zap-security-report
-          path: target/zap-reports/
+          path: 'public_report'
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: security-test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
