@@ -7,10 +7,10 @@ on:
     branches: [ "main", "develop" ]
   workflow_dispatch:
 
-
 jobs:
   security-test:
     runs-on: ubuntu-latest
+    # PERMISO 1: Solo lectura para el test (Content Read)
     permissions:
       contents: read
 
@@ -27,9 +27,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 1. LEVANTAR ZAP EN SEGUNDO PLANO
+      # 1. LEVANTAR ZAP (Blindado contra Sonar: Secretos en ENV)
       - name: Start OWASP ZAP Container
         timeout-minutes: 10
+        env:
+          ZAP_AUTH_KEY: ${{ secrets.ZAP_API_KEY }}
         run: |
           docker run -d --name zap \
             -p 8080:8080 \
@@ -39,12 +41,12 @@ jobs:
             -port 8080 \
             -config api.addrs.addr.name=.* \
             -config api.addrs.addr.regex=true \
-            -config api.key=${{ secrets.ZAP_API_KEY }}
+            -config api.key=$ZAP_AUTH_KEY 
           
           echo "⏳ Esperando a que ZAP inicie..."
           sleep 30
 
-      # 2. EJECUTAR NAVEGACIÓN (SERENITY CRAWLER)
+      # 2. EJECUTAR NAVEGACIÓN
       - name: Run Serenity Navigation (Crawler)
         run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8080 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8080
         env:
@@ -52,39 +54,46 @@ jobs:
           ORBIT_PASS: ${{ secrets.ORBIT_PASS }}
         continue-on-error: true
 
-      # 3. EJECUTAR ATAQUE DE SEGURIDAD (ZAP RUNNER)
+      # 3. EJECUTAR ATAQUE
       - name: Run ZAP Security Attack
         run: ./gradlew runZapRunner
         env:
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
 
-      # 4. PREPARAR ARTEFACTOS
-      - name: Prepare ZAP Report for Publishing
+      # 4. PREPARAR REPORTE
+      - name: Prepare Report
         if: always()
         run: |
           mkdir -p public_report
           latest_report=$(ls -t target/zap-reports/*.html 2>/dev/null | head -n 1)
-          
           if [ -n "$latest_report" ]; then
             cp "$latest_report" public_report/index.html
-            echo "✅ Reporte encontrado: $latest_report"
+            echo "✅ Reporte preparado: $latest_report"
           else
-            echo "<html><body><h1>Error: No se generó reporte</h1></body></html>" > public_report/index.html
+            echo "<html><body><h1>Error: No report found</h1></body></html>" > public_report/index.html
           fi
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+      # 5. SUBIR ARTEFACTO (Esto te sirve A TI ahora mismo, sin permisos de admin)
+      - name: Upload Artifact ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAP-Security-Report
+          path: public_report/
+          retention-days: 5
 
+      # 6. PREPARAR PARA PAGES (Para cuando tu jefe active la opción)
       - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'public_report'
 
-  # 5. DESPLIEGUE (DEPLOY)
+  # JOB DE DESPLIEGUE (Fallará hasta que tu jefe active Pages en Main)
   deploy:
     needs: security-test
     runs-on: ubuntu-latest
 
+    # PERMISO 2: Escritura para Pages (Pages Write + ID Token)
     permissions:
       pages: write
       id-token: write
