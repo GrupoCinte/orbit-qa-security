@@ -1,68 +1,56 @@
-# --- TUS REGLAS BASE ---
-.gradle
+# ==================================
+# 🏗️ DIRECTORIOS DE CONSTRUCCIÓN
+# ==================================
+.gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-.kotlin
+target/
+out/
+bin/
 
-# --- INTELLIJ IDEA ---
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
+# ==================================
+# ⚡ REPORTES GENERADOS (ZAP + SERENITY)
+# ==================================
+# Ignoramos esto para que Sonar/CodeQL no escanee los HTMLs generados
+*.html
+Reporte_*.html
+zap-reports/
+site/
+*.log
+
+# ==================================
+# 🔐 CONFIGURACIÓN LOCAL Y SECRETOS
+# ==================================
+serenity.properties
+local.properties
+.env
+
+# ==================================
+# 🖥️ IDEs (IntelliJ, Eclipse, VSCode)
+# ==================================
+.idea/
 *.iws
 *.iml
 *.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-# --- ECLIPSE / NETBEANS / VS CODE ---
-.apt_generated
+.vscode/
 .classpath
-.factorypath
 .project
-.settings
+.settings/
+.factorypath
 .springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
+.sts4-cache/
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-.vscode/
 
-# --- MAC OS ---
+# ==================================
+# 🍎 SISTEMA OPERATIVO
+# ==================================
 .DS_Store
+Thumbs.db
 
-# ============================================
-# REGLAS ESPECÍFICAS DE SERENITY Y ZAP (¡IMPORTANTE!)
-# ============================================
-
-# Ignorar la carpeta donde Serenity guarda los reportes y screenshots
-target/
-
-# Ignorar reportes de ZAP generados manualmente
-zap-reports/
-
-# Ignorar archivo de configuración local de Serenity (si tienes credenciales ahí)
-serenity.properties
-
-# Ignorar logs de ejecución
-*.log
-
-.gradle
-build/
-target/
-zap-reports/
-out/
+# ==================================
+# 📦 EXCEPCIONES (No ignorar)
+# ==================================
 !gradle/wrapper/gradle-wrapper.jar
-.idea/
-*.iml
-.DS_Store
-serenity.properties
-*.log
