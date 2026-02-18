@@ -17,7 +17,7 @@ public class ZapSecurityRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZapSecurityRunner.class);
 
     private static final String ZAP_ADDRESS = "localhost";
-    private static final int ZAP_PORT = 8080;
+    private static final int ZAP_PORT = 8090;
     private static final String BASE_URL = "http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/";
 
     // MODIFICACIÓN HÍBRIDA: No lanzamos error si es null, solo avisamos

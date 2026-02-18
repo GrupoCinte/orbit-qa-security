@@ -27,14 +27,15 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 1. LEVANTAR ZAP (Blindado contra Sonar: Secretos en ENV)
+      # 1. LEVANTAR ZAP (Puerto 8090 y Espera Inteligente)
       - name: Start OWASP ZAP Container
         timeout-minutes: 10
         env:
           ZAP_AUTH_KEY: ${{ secrets.ZAP_API_KEY }}
         run: |
+          # Iniciamos ZAP mapeando el puerto 8090 del runner al 8080 del contenedor
           docker run -d --name zap \
-            -p 8080:8080 \
+            -p 8090:8080 \
             -i ghcr.io/zaproxy/zaproxy:stable \
             zap.sh -daemon \
             -host 0.0.0.0 \
@@ -43,12 +44,14 @@ jobs:
             -config api.addrs.addr.regex=true \
             -config api.key=$ZAP_AUTH_KEY 
           
-          echo "⏳ Esperando a que ZAP inicie..."
-          sleep 30
+          echo "⏳ Esperando a que ZAP inicie (Healthcheck)..."
+          # Intentamos conectar al puerto 8090 cada 5 segundos hasta que responda
+          timeout 120s bash -c 'until curl -s http://localhost:8090/ > /dev/null; do echo "Esperando a ZAP en puerto 8090..."; sleep 5; done'
+          echo "✅ ZAP iniciado y listo para recibir tráfico."
 
-      # 2. EJECUTAR NAVEGACIÓN
+      # 2. EJECUTAR NAVEGACIÓN (Actualizado a puerto 8090)
       - name: Run Serenity Navigation (Crawler)
-        run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8080 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8080
+        run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8090 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8090
         env:
           ORBIT_USER: ${{ secrets.ORBIT_USER }}
           ORBIT_PASS: ${{ secrets.ORBIT_PASS }}
