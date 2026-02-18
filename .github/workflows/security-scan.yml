@@ -49,7 +49,7 @@ jobs:
           timeout 120s bash -c 'until curl -s http://localhost:8090/ > /dev/null; do echo "Esperando a ZAP en puerto 8090..."; sleep 5; done'
           echo "✅ ZAP iniciado y listo para recibir tráfico."
 
-      # 2. EJECUTAR NAVEGACIÓN (Actualizado a puerto 8090)
+      # 2. EJECUTAR NAVEGACIÓN
       - name: Run Serenity Navigation (Crawler)
         run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8090 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8090
         env:
@@ -76,7 +76,7 @@ jobs:
             echo "<html><body><h1>Error: No report found</h1></body></html>" > public_report/index.html
           fi
 
-      # 5. SUBIR ARTEFACTO (Esto te sirve A TI ahora mismo, sin permisos de admin)
+      # 5. SUBIR ARTEFACTO
       - name: Upload Artifact ZIP
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,13 +85,12 @@ jobs:
           path: public_report/
           retention-days: 5
 
-      # 6. PREPARAR PARA PAGES (Para cuando tu jefe active la opción)
+      # 6. PREPARAR PARA PAGES
       - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'public_report'
 
-  # JOB DE DESPLIEGUE (Fallará hasta que tu jefe active Pages en Main)
   deploy:
     needs: security-test
     runs-on: ubuntu-latest
