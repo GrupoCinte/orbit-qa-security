@@ -10,22 +10,22 @@ import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 public class OrbitStepDefinitions extends PageObject {
 
-    // Logger profesional para cumplir con estándares de Clean Code
     private static final Logger LOGGER = LoggerFactory.getLogger(OrbitStepDefinitions.class);
 
     // =========================================================================
     // 1. SELECTORES Y CONFIGURACIÓN
     // =========================================================================
-
     private static final String INPUT_USUARIO = "[id='j_idt5:correo']";
     private static final String INPUT_PASSWORD = "[id='j_idt5:password']";
     private static final String BOTON_LOGIN = "[id='j_idt5:button']";
-    private static final String LINKS_OCULTOS = "#intro a";
+
+    private static final String LINKS_OCULTOS = "a[href*='.xhtml']";
     private static final String URL_BASE = "http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/";
 
     // =========================================================================
@@ -39,85 +39,93 @@ public class OrbitStepDefinitions extends PageObject {
     }
 
     // =========================================================================
-    // 2: INICIAR SESIÓN
+    // 2: INICIAR SESIÓN (CON ESPERA DE ZAP)
     // =========================================================================
     @Cuando("ingresa las credenciales de acceso")
     public void ingresarCredenciales() {
         LOGGER.info(">>> [2/4] Ingresando credenciales...");
 
-        // Prioriza variables de entorno (GitHub), si no existen, usa tus datos locales
-        String usuario = System.getenv("ORBIT_USER") != null ? System.getenv("ORBIT_USER") : "gc__@grupocinte.com";
-        String pass = System.getenv("ORBIT_PASS") != null ? System.getenv("ORBIT_PASS") : "Estreno32.";
+        String usuario = System.getenv("ORBIT_USER") != null ? System.getenv("ORBIT_USER").trim() : "gc__@grupocinte.com";
+        String pass = System.getenv("ORBIT_PASS") != null ? System.getenv("ORBIT_PASS").trim() : "Estreno32.";
 
-        $(INPUT_USUARIO).waitUntilVisible().clear();
+        LOGGER.info("   -> Usuario detectado: {}", usuario);
+
+        $(INPUT_USUARIO).withTimeoutOf(Duration.ofSeconds(30)).waitUntilVisible().clear();
         $(INPUT_USUARIO).type(usuario);
 
-        $(INPUT_PASSWORD).waitUntilVisible().clear();
+        $(INPUT_PASSWORD).clear();
         $(INPUT_PASSWORD).type(pass);
 
+        LOGGER.info("   -> Haciendo click en Login...");
         $(BOTON_LOGIN).waitUntilClickable().click();
+
+        // LA CLAVE ESTÁ AQUÍ: Obligamos al robot a sentarse y esperar 15 segundos
+        LOGGER.info("   -> Esperando redireccion (Latency ZAP)...");
+        waitABit(15000);
     }
 
     // =========================================================================
-    // 3: DESCUBRIMIENTO DE MÓDULOS (Modo Fantasma)
+    // 3: DESCUBRIMIENTO DE MÓDULOS
     // =========================================================================
     @Y("navega por el menu principal para descubrir modulos")
     public void navegarPorModulos() {
-        LOGGER.info(">>> [3/4] MODO FANTASMA: Iniciando extraccion masiva de modulos...");
+        LOGGER.info(">>> [3/4] MODO FANTASMA: Buscando enlaces internos...");
 
-        // Reemplazo de Thread.sleep por waitABit (estándar de Serenity)
-        waitABit(5000);
+        if (getDriver().getCurrentUrl().contains("login")) {
+            LOGGER.error("!!! ERROR: Seguimos en la pagina de login. Revisa las credenciales.");
+        }
 
         List<WebElementFacade> enlacesOcultos = findAll(LINKS_OCULTOS);
         List<String> urlsAVisitar = new ArrayList<>();
 
-        LOGGER.info("   -> Total de elementos brutos encontrados: {}", enlacesOcultos.size());
+        LOGGER.info("   -> Total de enlaces encontrados en el DOM: {}", enlacesOcultos.size());
 
         for (WebElementFacade link : enlacesOcultos) {
             String url = link.getAttribute("href");
-            String texto = link.getAttribute("textContent").trim().toLowerCase();
-
-            // Combinación de IFs para cumplir con la regla java:S1066 de SonarQube
-            if (isValidLink(url, texto) && !urlsAVisitar.contains(url)) {
-                LOGGER.info("      [+] Agregado a la ruta: {} -> {}", texto, url);
-                urlsAVisitar.add(url);
+            if (url != null && !url.isEmpty() && !urlsAVisitar.contains(url)) {
+                if(url.contains("ORBIT") && !url.contains("#")) {
+                    urlsAVisitar.add(url);
+                }
             }
         }
 
         visitarUrlsEncontradas(urlsAVisitar);
     }
 
-    private boolean isValidLink(String url, String texto) {
-        return url != null && !url.isEmpty() && !url.contains("javascript") && !url.contains("#") &&
-                !texto.contains("salir") && !texto.contains("cerrar") && !texto.contains("olvidaste");
-    }
-
     private void visitarUrlsEncontradas(List<String> urlsAVisitar) {
         int total = urlsAVisitar.size();
-        LOGGER.info("   -> Se visitaran {} modulos unicos!", total);
 
+        if (total == 0) {
+            LOGGER.warn("   -> No se encontraron enlaces en el Dashboard. Intentando rutas directas...");
+            manejarRutasEmergencia();
+            return;
+        }
+
+        LOGGER.info("   -> Se visitaran {} modulos unicos!", total);
         for (int i = 0; i < total; i++) {
             String urlDestino = urlsAVisitar.get(i);
             try {
                 LOGGER.info("   -> [{}/{}] Visitando: {}", (i + 1), total, urlDestino);
                 getDriver().get(urlDestino);
-                waitABit(2500);
+                waitABit(2000);
             } catch (Exception e) {
-                // Bloque catch con comentario y log para cumplir con java:S108
-                LOGGER.error("      Error al intentar visitar: {}", urlDestino, e);
+                LOGGER.error("      Error al intentar visitar: {}", urlDestino);
             }
-        }
-
-        if (urlsAVisitar.isEmpty()) {
-            manejarRutasEmergencia();
         }
     }
 
     private void manejarRutasEmergencia() {
-        LOGGER.warn("ALERTA: No se encontraron enlaces automaticos. Usando rutas de emergencia.");
-        getDriver().get(URL_BASE + "GC/index.xhtml");
-        waitABit(3000);
-        getDriver().get(URL_BASE + "Admin/index.xhtml");
+        String[] rutasBackup = {
+                URL_BASE + "GC/index.xhtml",
+                URL_BASE + "Admin/index.xhtml",
+                URL_BASE + "dashboard.xhtml"
+        };
+
+        for (String ruta : rutasBackup) {
+            LOGGER.info("   -> Probando ruta de emergencia: {}", ruta);
+            getDriver().get(ruta);
+            waitABit(3000);
+        }
     }
 
     // =========================================================================
@@ -128,13 +136,13 @@ public class OrbitStepDefinitions extends PageObject {
         LOGGER.info(">>> [4/4] Verificando estado final de la sesion...");
 
         String urlActual = getDriver().getCurrentUrl();
+        LOGGER.info("   URL Final: {}", urlActual);
 
-        if (urlActual.contains("login.xhtml") || urlActual.equals(URL_BASE)) {
+        if (urlActual.contains("login.xhtml") || urlActual.equalsIgnoreCase(URL_BASE)) {
+            LOGGER.error("FALLO: El login no persistio.");
             Assert.fail("FALLO CRITICO: La sesion se cerro o nunca inicio. URL: " + urlActual);
         } else {
-            LOGGER.info("MISION CUMPLIDA: Recorrido completo finalizado.");
-            LOGGER.info("   Sesion activa en: {}", urlActual);
-            getDriver().navigate().refresh();
+            LOGGER.info("MISION CUMPLIDA: Sesion activa y navegacion completada.");
         }
     }
 }
