@@ -98,7 +98,7 @@ task runZapRunner(type: JavaExec) {
     description = "Ejecuta el ataque de seguridad OWASP ZAP"
 
     classpath = sourceSets.test.runtimeClasspath
-    mainClass = "utils.ZapSecurityRunner"
+    mainClass = "com.grupocinte.qa.security.utils.ZapSecurityRunner"
 
     if (System.getenv("ZAP_API_KEY") != null) {
         environment "ZAP_API_KEY", System.getenv("ZAP_API_KEY")
