@@ -4,15 +4,16 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        // Plugin de Serenity
         classpath("net.serenity-bdd:serenity-gradle-plugin:4.0.30")
+        classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373")
     }
 }
 
-// 1. APLICAMOS LOS PLUGINS
 apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: 'net.serenity-bdd.serenity-gradle-plugin'
+apply plugin: 'jacoco'
+apply plugin: 'org.sonarqube'
 
 // 2. CONFIGURACIÓN DEL PROYECTO
 defaultTasks 'clean', 'test', 'aggregate'
@@ -21,8 +22,6 @@ repositories {
     mavenCentral()
 }
 
-// --- CORRECCIÓN CRÍTICA: CODIFICACIÓN UTF-8 ---
-// Esto soluciona los errores de símbolos raros (ÔÜá) en Windows
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
@@ -69,9 +68,26 @@ test {
     useJUnitPlatform()
     testLogging.showStandardStreams = true
     filter {
-        includeTestsMatching "starter.CucumberTestSuite"
+        includeTestsMatching "com.grupocinte.qa.security.starter.CucumberTestSuite"
     }
     systemProperties System.getProperties()
+
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+sonarqube {
+    properties {
+        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
+        property "sonar.exclusions", "**/target/**, **/build/**, **/zap-reports/**, **/*.html"
+    }
 }
 
 gradle.startParameter.continueOnFailure = true
@@ -84,7 +100,6 @@ task runZapRunner(type: JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "utils.ZapSecurityRunner"
 
-    // Pasar la API KEY al proceso de Java si existe en el entorno
     if (System.getenv("ZAP_API_KEY") != null) {
         environment "ZAP_API_KEY", System.getenv("ZAP_API_KEY")
     }

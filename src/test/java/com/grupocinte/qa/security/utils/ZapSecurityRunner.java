@@ -1,4 +1,4 @@
-package utils;
+package com.grupocinte.qa.security.utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,8 @@ public class ZapSecurityRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ZapSecurityRunner.class);
 
-    private static final String ZAP_ADDRESS = "localhost";
+    // 👇 CORRECCIÓN: Usamos 127.0.0.1 en lugar de localhost para evitar fallos de red en GitHub Actions
+    private static final String ZAP_ADDRESS = "127.0.0.1";
     private static final int ZAP_PORT = 8090;
     private static final String BASE_URL = "http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/";
 
@@ -26,11 +27,10 @@ public class ZapSecurityRunner {
     public static void main(String[] args) {
         LOGGER.info("--- PROTOCOLO DE SEGURIDAD ZAP INICIADO ---");
 
-        if (ZAP_API_KEY.isEmpty()) {
-            LOGGER.warn("[MODO LOCAL] ZAP_API_KEY no encontrada. Se intentará conectar sin clave.");
+        if (ZAP_API_KEY.isEmpty() || ZAP_API_KEY.equals("qcfou2f1e3uolruhfinhja6cld")) {
+            LOGGER.warn("[MODO LOCAL] Se está usando la clave por defecto o no se encontró ZAP_API_KEY.");
         }
 
-        // Esta es la línea 32 original. Ahora ZAP_API_KEY siempre tendrá un valor (aunque sea "")
         ClientApi api = new ClientApi(ZAP_ADDRESS, ZAP_PORT, ZAP_API_KEY);
 
         try {
@@ -55,7 +55,8 @@ public class ZapSecurityRunner {
             generarReporteSeguridad(api);
 
         } catch (Exception e) {
-            LOGGER.error("FALLO CRÍTICO: {}. Asegúrate de que ZAP Desktop esté abierto en el puerto 8080.", e.getMessage());
+            // 👇 CORRECCIÓN: El mensaje de error ahora dice 8090
+            LOGGER.error("FALLO CRÍTICO: {}. Asegúrate de que ZAP esté escuchando en el puerto {}.", e.getMessage(), ZAP_PORT);
             System.exit(1);
         }
     }
@@ -65,7 +66,8 @@ public class ZapSecurityRunner {
             api.core.version();
             LOGGER.info("Conexión establecida con éxito con OWASP ZAP.");
         } catch (Exception e) {
-            throw new Exception("No se pudo conectar a ZAP en localhost:8080. Verifique que la aplicación esté abierta.");
+            // 👇 CORRECCIÓN: El texto ahora dice 8090
+            throw new Exception("No se pudo conectar a ZAP en " + ZAP_ADDRESS + ":" + ZAP_PORT + ". Verifique que el contenedor esté corriendo.");
         }
     }
 

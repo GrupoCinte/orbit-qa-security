@@ -1,4 +1,4 @@
-package starter;
+package com.grupocinte.qa.security.starter;
 
 import io.cucumber.java.es.Dado;
 import io.cucumber.java.es.Cuando;
