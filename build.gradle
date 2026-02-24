@@ -4,7 +4,7 @@ plugins {
     id 'idea'
     id 'jacoco'
     id 'net.serenity-bdd.serenity-gradle-plugin' version '4.0.30'
-    id 'org.sonarqube' version '4.4.1.3373'
+    id 'org.sonarqube' version '5.1.0.4882'
 }
 
 // 2. CONFIGURACIÓN DEL PROYECTO
@@ -75,10 +75,11 @@ jacocoTestReport {
     }
 }
 
-sonarqube {
+sonar {
     properties {
         property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
         property "sonar.exclusions", "**/target/**, **/build/**, **/zap-reports/**, **/*.html"
+        property "sonar.gradle.skipCompile", "true"
     }
 }
 
