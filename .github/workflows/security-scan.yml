@@ -2,16 +2,16 @@ name: Orbit Security Pipeline
 
 on:
   push:
-    branches: [ "main", "develop", "feature/**" ]
+    branches: [ "main", "feature/**", "fix/**" ]
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   security-test:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -32,7 +32,6 @@ jobs:
         env:
           ZAP_AUTH_KEY: ${{ secrets.ZAP_API_KEY }}
         run: |
-          # Iniciamos ZAP mapeando el puerto 8090 del runner al 8080 del contenedor
           docker run -d --name zap \
             -p 8090:8080 \
             -i ghcr.io/zaproxy/zaproxy:stable \
@@ -43,8 +42,7 @@ jobs:
             -config api.addrs.addr.regex=true \
             -config api.key=$ZAP_AUTH_KEY 
           
-          echo "⏳ Esperando a que ZAP inicie (Healthcheck)..."
-          # Intentamos conectar al puerto 8090 cada 5 segundos hasta que responda
+          echo "⏳ Esperando a que ZAP inicie..."
           timeout 120s bash -c 'until curl -s http://localhost:8090/ > /dev/null; do echo "Esperando a ZAP en puerto 8090..."; sleep 5; done'
           echo "✅ ZAP iniciado y listo para recibir tráfico."
 
@@ -62,7 +60,13 @@ jobs:
         env:
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
 
-      # 4. PREPARAR REPORTE
+      # 4. ENVIAR DATOS A SONARQUBE
+      - name: Send to SonarQube
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew sonar -Dsonar.token=$SONAR_TOKEN
+
+      # 5. PREPARAR REPORTE
       - name: Prepare Report
         if: always()
         run: |
@@ -75,7 +79,7 @@ jobs:
             echo "<html><body><h1>Error: No report found</h1></body></html>" > public_report/index.html
           fi
 
-      # 5. SUBIR ARTEFACTO (Reporte ZAP)
+      # 6. SUBIR ARTEFACTO (Reporte ZAP)
       - name: Upload Artifact ZIP
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,7 +88,7 @@ jobs:
           path: public_report/
           retention-days: 5
 
-
+      # 7. SUBIR CARPETA JACOCO
       - name: Upload JaCoCo Coverage Folder
         if: always()
         uses: actions/upload-artifact@v4
@@ -93,27 +97,11 @@ jobs:
           path: build/reports/jacoco/test/
           retention-days: 5
 
-      # 6. PREPARAR PARA PAGES
-      - name: Upload artifact for Pages
-        if: github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
+      # 8. DESPLEGAR A LA RAMA GH-PAGES
+      - name: Deploy to gh-pages branch
+        if: always() && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          path: 'public_report'
-
-  deploy:
-    if: github.ref == 'refs/heads/main'
-    needs: security-test
-    runs-on: ubuntu-latest
-
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public_report
+          publish_branch: gh-pages
