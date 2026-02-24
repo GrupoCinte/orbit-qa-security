@@ -1,4 +1,4 @@
-// 1. APLICAMOS LOS PLUGINS (Sintaxis Moderna)
+// 1. APLICAMOS LOS PLUGINS
 plugins {
     id 'java'
     id 'idea'
@@ -35,24 +35,18 @@ ext {
 }
 
 dependencies {
-    // Serenity Core y Cucumber
     testImplementation "net.serenity-bdd:serenity-core:${serenityCoreVersion}"
     testImplementation "net.serenity-bdd:serenity-cucumber:${serenityCoreVersion}"
     testImplementation "net.serenity-bdd:serenity-screenplay:${serenityCoreVersion}"
     testImplementation "net.serenity-bdd:serenity-junit5:${serenityCoreVersion}"
 
-    // JUnit 5
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
 
-    // Compatibilidad JUnit 4 (Vintage)
     testImplementation "junit:junit:4.13.2"
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine:${junitVersion}"
 
-    // Logging
     testImplementation "ch.qos.logback:logback-classic:1.4.14"
-
-    // Cliente OWASP ZAP
     implementation 'org.zaproxy:zap-clientapi:1.14.0'
 }
 
@@ -63,7 +57,6 @@ test {
         includeTestsMatching "com.grupocinte.qa.security.starter.CucumberTestSuite"
     }
     systemProperties System.getProperties()
-
     finalizedBy jacocoTestReport
 }
 
@@ -75,6 +68,7 @@ jacocoTestReport {
     }
 }
 
+// 4. CONFIGURACIÓN DE SONARQUBE (Sintaxis v5)
 sonar {
     properties {
         property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
@@ -85,11 +79,10 @@ sonar {
 
 gradle.startParameter.continueOnFailure = true
 
-// --- TAREA DE SEGURIDAD ZAP ---
+// 5. TAREA DE SEGURIDAD ZAP
 task runZapRunner(type: JavaExec) {
     group = "security"
     description = "Ejecuta el ataque de seguridad OWASP ZAP"
-
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "com.grupocinte.qa.security.utils.ZapSecurityRunner"
 
