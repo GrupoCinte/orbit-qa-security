@@ -1,0 +1,56 @@
+# ==================================
+# 🏗️ DIRECTORIOS DE CONSTRUCCIÓN
+# ==================================
+.gradle/
+build/
+target/
+out/
+bin/
+
+# ==================================
+# ⚡ REPORTES GENERADOS (ZAP + SERENITY)
+# ==================================
+# Ignoramos esto para que Sonar/CodeQL no escanee los HTMLs generados
+*.html
+Reporte_*.html
+zap-reports/
+site/
+*.log
+
+# ==================================
+# 🔐 CONFIGURACIÓN LOCAL Y SECRETOS
+# ==================================
+serenity.properties
+local.properties
+.env
+
+# ==================================
+# 🖥️ IDEs (IntelliJ, Eclipse, VSCode)
+# ==================================
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+.springBeans
+.sts4-cache/
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ==================================
+# 🍎 SISTEMA OPERATIVO
+# ==================================
+.DS_Store
+Thumbs.db
+
+# ==================================
+# 📦 EXCEPCIONES (No ignorar)
+# ==================================
+!gradle/wrapper/gradle-wrapper.jar

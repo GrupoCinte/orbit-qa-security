@@ -1,0 +1,119 @@
+name: Orbit Security Pipeline
+
+on:
+  push:
+    branches: [ "main", "develop", "feature/**" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  workflow_dispatch:
+
+jobs:
+  security-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 1. LEVANTAR ZAP
+      - name: Start OWASP ZAP Container
+        timeout-minutes: 10
+        env:
+          ZAP_AUTH_KEY: ${{ secrets.ZAP_API_KEY }}
+        run: |
+          # Iniciamos ZAP mapeando el puerto 8090 del runner al 8080 del contenedor
+          docker run -d --name zap \
+            -p 8090:8080 \
+            -i ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -daemon \
+            -host 0.0.0.0 \
+            -port 8080 \
+            -config api.addrs.addr.name=.* \
+            -config api.addrs.addr.regex=true \
+            -config api.key=$ZAP_AUTH_KEY 
+          
+          echo "⏳ Esperando a que ZAP inicie (Healthcheck)..."
+          # Intentamos conectar al puerto 8090 cada 5 segundos hasta que responda
+          timeout 120s bash -c 'until curl -s http://localhost:8090/ > /dev/null; do echo "Esperando a ZAP en puerto 8090..."; sleep 5; done'
+          echo "✅ ZAP iniciado y listo para recibir tráfico."
+
+      # 2. EJECUTAR NAVEGACIÓN
+      - name: Run Serenity Navigation (Crawler)
+        run: ./gradlew test -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8090 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8090
+        env:
+          ORBIT_USER: ${{ secrets.ORBIT_USER }}
+          ORBIT_PASS: ${{ secrets.ORBIT_PASS }}
+        continue-on-error: true
+
+      # 3. EJECUTAR ATAQUE
+      - name: Run ZAP Security Attack
+        run: ./gradlew runZapRunner
+        env:
+          ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
+
+      # 4. PREPARAR REPORTE
+      - name: Prepare Report
+        if: always()
+        run: |
+          mkdir -p public_report
+          latest_report=$(ls -t target/zap-reports/*.html 2>/dev/null | head -n 1)
+          if [ -n "$latest_report" ]; then
+            cp "$latest_report" public_report/index.html
+            echo "✅ Reporte preparado: $latest_report"
+          else
+            echo "<html><body><h1>Error: No report found</h1></body></html>" > public_report/index.html
+          fi
+
+      # 5. SUBIR ARTEFACTO (Reporte ZAP)
+      - name: Upload Artifact ZIP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZAP-Security-Report
+          path: public_report/
+          retention-days: 5
+
+
+      - name: Upload JaCoCo Coverage Folder
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: JaCoCo-Coverage-Report
+          path: build/reports/jacoco/test/
+          retention-days: 5
+
+      # 6. PREPARAR PARA PAGES
+      - name: Upload artifact for Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'public_report'
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: security-test
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

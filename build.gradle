@@ -1,0 +1,98 @@
+// 1. APLICAMOS LOS PLUGINS (Sintaxis Moderna)
+plugins {
+    id 'java'
+    id 'idea'
+    id 'jacoco'
+    id 'net.serenity-bdd.serenity-gradle-plugin' version '4.0.30'
+    id 'org.sonarqube' version '4.4.1.3373'
+}
+
+// 2. CONFIGURACIÓN DEL PROYECTO
+defaultTasks 'clean', 'test', 'aggregate'
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+javadoc {
+    options.encoding = 'UTF-8'
+}
+// ----------------------------------------------
+
+// 3. VERSIÓN DE JAVA
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+ext {
+    serenityCoreVersion = '4.0.30'
+    junitVersion = '5.10.1'
+}
+
+dependencies {
+    // Serenity Core y Cucumber
+    testImplementation "net.serenity-bdd:serenity-core:${serenityCoreVersion}"
+    testImplementation "net.serenity-bdd:serenity-cucumber:${serenityCoreVersion}"
+    testImplementation "net.serenity-bdd:serenity-screenplay:${serenityCoreVersion}"
+    testImplementation "net.serenity-bdd:serenity-junit5:${serenityCoreVersion}"
+
+    // JUnit 5
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+
+    // Compatibilidad JUnit 4 (Vintage)
+    testImplementation "junit:junit:4.13.2"
+    testRuntimeOnly "org.junit.vintage:junit-vintage-engine:${junitVersion}"
+
+    // Logging
+    testImplementation "ch.qos.logback:logback-classic:1.4.14"
+
+    // Cliente OWASP ZAP
+    implementation 'org.zaproxy:zap-clientapi:1.14.0'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging.showStandardStreams = true
+    filter {
+        includeTestsMatching "com.grupocinte.qa.security.starter.CucumberTestSuite"
+    }
+    systemProperties System.getProperties()
+
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+sonarqube {
+    properties {
+        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
+        property "sonar.exclusions", "**/target/**, **/build/**, **/zap-reports/**, **/*.html"
+    }
+}
+
+gradle.startParameter.continueOnFailure = true
+
+// --- TAREA DE SEGURIDAD ZAP ---
+task runZapRunner(type: JavaExec) {
+    group = "security"
+    description = "Ejecuta el ataque de seguridad OWASP ZAP"
+
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.grupocinte.qa.security.utils.ZapSecurityRunner"
+
+    if (System.getenv("ZAP_API_KEY") != null) {
+        environment "ZAP_API_KEY", System.getenv("ZAP_API_KEY")
+    }
+}
