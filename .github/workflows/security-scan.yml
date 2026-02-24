@@ -64,8 +64,7 @@ jobs:
       - name: Send to SonarQube
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar -Dsonar.token=$SONAR_TOKEN
-
+run: ./gradlew sonar -Dsonar.token=$SONAR_TOKEN --stacktrace
       # 5. PREPARAR REPORTE
       - name: Prepare Report
         if: always()
