@@ -1,19 +1,11 @@
-buildscript {
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
-    dependencies {
-        classpath("net.serenity-bdd:serenity-gradle-plugin:4.0.30")
-        classpath("org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:4.4.1.3373")
-    }
+// 1. APLICAMOS LOS PLUGINS (Sintaxis Moderna)
+plugins {
+    id 'java'
+    id 'idea'
+    id 'jacoco'
+    id 'net.serenity-bdd.serenity-gradle-plugin' version '4.0.30'
+    id 'org.sonarqube' version '4.4.1.3373'
 }
-
-apply plugin: 'java'
-apply plugin: 'idea'
-apply plugin: 'net.serenity-bdd.serenity-gradle-plugin'
-apply plugin: 'jacoco'
-apply plugin: 'org.sonarqube'
 
 // 2. CONFIGURACIÓN DEL PROYECTO
 defaultTasks 'clean', 'test', 'aggregate'

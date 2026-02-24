@@ -10,7 +10,6 @@ on:
 jobs:
   security-test:
     runs-on: ubuntu-latest
-    # PERMISO 1: Solo lectura para el test
     permissions:
       contents: read
 
@@ -76,13 +75,22 @@ jobs:
             echo "<html><body><h1>Error: No report found</h1></body></html>" > public_report/index.html
           fi
 
-      # 5. SUBIR ARTEFACTO
+      # 5. SUBIR ARTEFACTO (Reporte ZAP)
       - name: Upload Artifact ZIP
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ZAP-Security-Report
           path: public_report/
+          retention-days: 5
+
+
+      - name: Upload JaCoCo Coverage Folder
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: JaCoCo-Coverage-Report
+          path: build/reports/jacoco/test/
           retention-days: 5
 
       # 6. PREPARAR PARA PAGES
