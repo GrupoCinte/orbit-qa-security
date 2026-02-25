@@ -68,8 +68,8 @@ jobs:
           ./gradlew sonar 
           -Dsonar.token=$SONAR_TOKEN 
           -Dsonar.organization=grupocinte 
-          -Dsonar.projectKey=grupocinte_orbit-qa-security 
-          -Dsonar.projectName="Orbit QA Security" 
+          -Dsonar.projectKey=GrupoCinte_orbit-qa-security 
+          -Dsonar.projectName="orbit-qa-security" 
           -Dsonar.host.url=https://sonarcloud.io 
           --stacktrace
 
