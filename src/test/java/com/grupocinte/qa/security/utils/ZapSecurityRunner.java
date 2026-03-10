@@ -16,12 +16,10 @@ public class ZapSecurityRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ZapSecurityRunner.class);
 
-    // 👇 CORRECCIÓN: Usamos 127.0.0.1 en lugar de localhost para evitar fallos de red en GitHub Actions
     private static final String ZAP_ADDRESS = "127.0.0.1";
     private static final int ZAP_PORT = 8090;
     private static final String BASE_URL = "http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/";
 
-    // MODIFICACIÓN HÍBRIDA: No lanzamos error si es null, solo avisamos
     private static final String ZAP_API_KEY = System.getenv("ZAP_API_KEY") != null ? System.getenv("ZAP_API_KEY").trim() : "qcfou2f1e3uolruhfinhja6cld";
 
     public static void main(String[] args) {
@@ -34,7 +32,6 @@ public class ZapSecurityRunner {
         ClientApi api = new ClientApi(ZAP_ADDRESS, ZAP_PORT, ZAP_API_KEY);
 
         try {
-            // Validamos conexión antes de atacar
             validarConexion(api);
 
             configurarExclusiones(api);
@@ -55,7 +52,6 @@ public class ZapSecurityRunner {
             generarReporteSeguridad(api);
 
         } catch (Exception e) {
-            // 👇 CORRECCIÓN: El mensaje de error ahora dice 8090
             LOGGER.error("FALLO CRÍTICO: {}. Asegúrate de que ZAP esté escuchando en el puerto {}.", e.getMessage(), ZAP_PORT);
             System.exit(1);
         }
@@ -66,7 +62,6 @@ public class ZapSecurityRunner {
             api.core.version();
             LOGGER.info("Conexión establecida con éxito con OWASP ZAP.");
         } catch (Exception e) {
-            // 👇 CORRECCIÓN: El texto ahora dice 8090
             throw new Exception("No se pudo conectar a ZAP en " + ZAP_ADDRESS + ":" + ZAP_PORT + ". Verifique que el contenedor esté corriendo.");
         }
     }

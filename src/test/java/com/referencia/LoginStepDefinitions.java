@@ -10,12 +10,10 @@ import org.slf4j.LoggerFactory;
 
 public class LoginStepDefinitions extends UIInteractionSteps {
 
-    // Se define el Logger para cumplir con los estándares de SonarQube (Regla java:S106)
     private static final Logger LOGGER = LoggerFactory.getLogger(LoginStepDefinitions.class);
 
     @Dado("que el usuario se encuentra autenticado en el sistema")
     public void que_el_usuario_se_encuentra_autenticado_en_el_sistema() {
-        // Se obtiene la URL desde las variables de entorno configuradas en el pipeline
         openUrl(System.getenv("QA_URL"));
 
         try {
@@ -24,8 +22,6 @@ public class LoginStepDefinitions extends UIInteractionSteps {
                 waitABit(1000);
             }
         } catch (Exception e) {
-            // Regla java:S108: Se agrega un comentario explicativo y un log de depuración
-            // Se ignora porque el botón es un pop-up opcional que no siempre aparece
             LOGGER.debug("El botón opcional no fue encontrado o no requirió interacción", e);
         }
 

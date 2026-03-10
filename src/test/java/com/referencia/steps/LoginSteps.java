@@ -19,7 +19,6 @@ public class LoginSteps {
 
     @When("ingresa credenciales validas")
     public void ingresarDatos() {
-        // Lee las variables de entorno que pusiste en la terminal
         String usuario = System.getenv("QA_USER");
         String clave = System.getenv("QA_PASS");
 
@@ -29,7 +28,6 @@ public class LoginSteps {
 
     @Then("deberia ver el panel principal de la aplicacion")
     public void verificarDashboard() {
-        // Espera de cortesía para ver el resultado
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {

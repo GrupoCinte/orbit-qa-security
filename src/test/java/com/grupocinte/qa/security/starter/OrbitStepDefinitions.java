@@ -59,7 +59,6 @@ public class OrbitStepDefinitions extends PageObject {
         LOGGER.info("   -> Haciendo click en Login...");
         $(BOTON_LOGIN).waitUntilClickable().click();
 
-        // LA CLAVE ESTÁ AQUÍ: Obligamos al robot a sentarse y esperar 15 segundos
         LOGGER.info("   -> Esperando redireccion (Latency ZAP)...");
         waitABit(15000);
     }
