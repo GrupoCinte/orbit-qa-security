@@ -46,7 +46,7 @@ jobs:
           timeout 120s bash -c 'until curl -s http://localhost:8090/ > /dev/null; do echo "Esperando a ZAP en puerto 8090..."; sleep 5; done'
           echo "✅ ZAP iniciado y listo para recibir tráfico."
 
-      # 2. EJECUTAR NAVEGACIÓN Y JACOCO
+      # 2. EJECUTAR NAVEGACIÓN Y JACOCO (Paso 1 de la doc de Sonar)
       - name: Run Serenity Navigation & JaCoCo
         run: ./gradlew test jacocoTestReport -Dwebdriver.base.url=http://node206897-orbitcinte.w1-us.cloudjiffy.net:8080/ORBIT/ -Dserenity.proxy.http=localhost -Dserenity.proxy.http_port=8090 -Dserenity.proxy.ssl=localhost -Dserenity.proxy.ssl_port=8090
         env:
@@ -70,6 +70,7 @@ jobs:
             -Dsonar.token=$SONAR_TOKEN \
             -Dsonar.organization=grupocinte \
             -Dsonar.projectKey=GrupoCinte_orbit-qa-security \
+            -Dsonar.projectName="Orbit QA Security" \
             -Dsonar.branch.name=main \
             -Dsonar.host.url=https://sonarcloud.io \
             --stacktrace
