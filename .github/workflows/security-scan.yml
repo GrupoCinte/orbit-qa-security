@@ -60,7 +60,8 @@ jobs:
         env:
           ZAP_API_KEY: ${{ secrets.ZAP_API_KEY }}
 
-      # 4. ENVIAR DATOS A SONARQUBE
+
+      # 4. ENVIAR DATOS A SONARQUBE (Solo cuando se mezcle en main)
       - name: Send to SonarQube
         if: github.ref == 'refs/heads/main'
         env:
