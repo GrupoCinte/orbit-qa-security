@@ -21,6 +21,7 @@ tasks.withType(JavaCompile) {
 javadoc {
     options.encoding = 'UTF-8'
 }
+// ----------------------------------------------
 
 // 3. VERSIÓN DE JAVA
 java {
@@ -51,7 +52,7 @@ dependencies {
 
 test {
     useJUnitPlatform()
-    ignoreFailures = true
+    ignoreFailures = true // ¡La línea salvavidas para el pipeline!
     testLogging.showStandardStreams = true
     filter {
         includeTestsMatching "com.grupocinte.qa.security.starter.CucumberTestSuite"
@@ -62,8 +63,11 @@ test {
 
 jacocoTestReport {
     dependsOn test
+
+    // Obligamos a JaCoCo a mirar y medir la carpeta de pruebas (test)
     classDirectories.setFrom(sourceSets.test.output)
     sourceDirectories.setFrom(sourceSets.test.allSource)
+
     reports {
         xml.required = true
         html.required = true
@@ -73,10 +77,12 @@ jacocoTestReport {
 // 4. CONFIGURACIÓN DE SONARQUBE
 sonar {
     properties {
+        // Le indicamos la ruta exacta del XML que generó JaCoCo
         property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
         property "sonar.exclusions", "**/target/**, **/build/**, **/zap-reports/**, **/*.html"
         property "sonar.gradle.skipCompile", "true"
 
+        // Al ser un repo de automatización, instruimos a Sonar para que audite la carpeta de pruebas
         property "sonar.sources", "src/test/java"
         property "sonar.java.binaries", "build/classes/java/test"
     }
