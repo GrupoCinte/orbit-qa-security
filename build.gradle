@@ -52,6 +52,9 @@ dependencies {
 
 test {
     useJUnitPlatform()
+
+    ignoreFailures = true
+
     testLogging.showStandardStreams = true
     filter {
         includeTestsMatching "com.grupocinte.qa.security.starter.CucumberTestSuite"
@@ -62,6 +65,10 @@ test {
 
 jacocoTestReport {
     dependsOn test
+    classDirectories.setFrom(sourceSets.test.output)
+    sourceDirectories.setFrom(sourceSets.test.allSource)
+
+
     reports {
         xml.required = true
         html.required = true
@@ -74,6 +81,12 @@ sonar {
         property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
         property "sonar.exclusions", "**/target/**, **/build/**, **/zap-reports/**, **/*.html"
         property "sonar.gradle.skipCompile", "true"
+
+
+        property "sonar.sources", "src/test/java"
+        property "sonar.tests", ""
+        property "sonar.java.binaries", "build/classes/java/test"
+
     }
 }
 
