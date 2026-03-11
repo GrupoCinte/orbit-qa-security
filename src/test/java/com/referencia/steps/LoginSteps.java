@@ -29,11 +29,13 @@ public class LoginSteps {
 
     @Then("deberia ver el panel principal de la aplicacion")
     public void verificarDashboard() {
-        // Espera de cortesía para ver el resultado
+        // Espera temporal refactorizada para cumplir con las reglas de SonarQube
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            // Restaura el estado de interrupción del hilo (Buena práctica en Java)
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("La espera del dashboard fue interrumpida inesperadamente", e);
         }
     }
 }
