@@ -84,6 +84,7 @@ sonar {
 
 
         property "sonar.sources", "src/test/java"
+        property "sonar.tests", ""
         property "sonar.java.binaries", "build/classes/java/test"
 
     }
